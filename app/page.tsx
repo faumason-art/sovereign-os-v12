@@ -1,182 +1,116 @@
+'use client';
+
+import { FormEvent, useMemo, useState } from 'react';
 import {
-  Activity,
-  ArrowDownRight,
-  ArrowRight,
-  ArrowUpRight,
-  BarChart3,
-  Bell,
-  Building2,
-  ChevronDown,
-  CircleDollarSign,
-  Command,
-  FileCheck2,
-  Fingerprint,
-  Gauge,
-  Layers3,
-  MapPin,
-  MoreHorizontal,
-  Radar,
-  ScanLine,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Waves,
-  Workflow,
+  Activity, ArrowRight, ArrowUpRight, BarChart3, Bell, Building2, Check,
+  ChevronDown, CircleDollarSign, Command, FileText, Fingerprint, Gauge,
+  Layers3, LoaderCircle, MapPin, MessageCircle, Radar, Send, ShieldCheck,
+  Sparkles, Workflow, X,
 } from 'lucide-react';
 
-const assets = [
-  { name: 'Wynyard Quarter', type: 'Mixed-use waterfront · Auckland', value: '$42.8M', change: '+8.4%', occupancy: '96.2%', tag: 'CORE+', tint: 'from-cyan-400/20' },
-  { name: 'Lambton Quay', type: 'Premium office · Wellington', value: '$31.2M', change: '+5.7%', occupancy: '91.8%', tag: 'CORE', tint: 'from-violet-400/20' },
-  { name: 'The Remarkables', type: 'Hospitality & alpine · Queenstown', value: '$18.6M', change: '+12.1%', occupancy: '88.4%', tag: 'VALUE ADD', tint: 'from-amber-400/20' },
+type Property = { name: string; location: string; value: number; yield: number; occupancy: number; color: string; zone: string };
+type ChatMessage = { role: 'user' | 'assistant'; text: string };
+
+const properties: Property[] = [
+  { name: 'Wynyard Quarter', location: 'Mixed-use waterfront · Auckland', value: 42.8, yield: 6.4, occupancy: 96.2, color: '#67e8f9', zone: 'Business – Mixed Use' },
+  { name: 'Lambton Quay', location: 'Premium office · Wellington', value: 31.2, yield: 6.9, occupancy: 91.8, color: '#c4b5fd', zone: 'City Centre' },
+  { name: 'The Remarkables', location: 'Hospitality & alpine · Queenstown', value: 18.6, yield: 7.6, occupancy: 88.4, color: '#fcd34d', zone: 'Resort / Visitor Accommodation' },
 ];
+const moduleNames = ['Portfolio Intelligence', 'Deal Origination', 'Investor Relations', 'Capital Allocator', 'Underwriting Studio', 'Document Vault', 'Asset Operations', 'Risk & Compliance', 'Lease Analytics', 'Capital Calls', 'Investor KYC', 'Covenant Monitor'];
+const chain = ['underwrite_deal', 'structure_tranches', 'audit_nz_zoning'];
+const money = (n: number) => `$${n.toFixed(1)}M`;
 
-const activity = [
-  { title: 'Wynyard Quarter · valuation refreshed', detail: 'Independent appraisal · data room updated', time: '09:42', icon: Building2, color: 'text-cyan-300' },
-  { title: 'Lambton Quay · diligence package ready', detail: '12 documents verified · 0 exceptions', time: '08:16', icon: FileCheck2, color: 'text-emerald-300' },
-  { title: 'Allocator model · scenario saved', detail: 'Balanced mandate · 5-year horizon', time: 'Yesterday', icon: BarChart3, color: 'text-violet-300' },
-];
-
-const modules = ['Portfolio Intelligence', 'Deal Origination', 'Investor Relations', 'Capital Allocator', 'Underwriting Studio', 'Document Vault', 'Asset Operations', 'Risk & Compliance'];
-
-function PanelTitle({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: string }) {
-  return (
-    <div className="mb-5 flex items-center justify-between gap-3">
-      <div>
-        {eyebrow && <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">{eyebrow}</div>}
-        <h2 className="text-sm font-semibold tracking-wide text-slate-100">{title}</h2>
-      </div>
-      {action && <button className="shrink-0 text-[11px] text-cyan-300 transition hover:text-cyan-100">{action} <ArrowRight className="ml-1 inline" size={12} /></button>}
-    </div>
-  );
+function Panel({ title, eyebrow, children, className = '' }: { title: string; eyebrow?: string; children: React.ReactNode; className?: string }) {
+  return <section className={`rounded-xl border border-white/[.08] bg-[#0e1319]/90 p-4 sm:p-5 ${className}`}>
+    <div className="mb-4"><div className="text-[9px] font-semibold uppercase tracking-[.2em] text-slate-500">{eyebrow}</div><h2 className="mt-1 text-sm font-semibold text-slate-100">{title}</h2></div>{children}
+  </section>;
 }
 
-function Metric({ label, value, note, icon: Icon, accent }: { label: string; value: string; note: string; icon: typeof Activity; accent: string }) {
-  return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#0e1319]/90 p-4 sm:p-5">
-      <div className="flex items-center justify-between text-[11px] text-slate-400"><span>{label}</span><Icon size={15} className={accent} /></div>
-      <div className="mt-3 flex items-end justify-between gap-2"><div className="text-2xl font-semibold tracking-tight text-white sm:text-[28px]">{value}</div><div className="mb-1 flex items-center gap-1 text-[10px] text-emerald-300"><ArrowUpRight size={12} />{note}</div></div>
-    </div>
-  );
+function Donut({ shares }: { shares: number[] }) {
+  const colors = properties.map((p) => p.color);
+  let start = 0;
+  const segments = shares.map((share, i) => { const length = share * 3.6; const segment = <circle key={i} cx="50" cy="50" r="37" fill="none" stroke={colors[i]} strokeWidth="11" strokeDasharray={`${length} ${360 - length}`} strokeDashoffset={-start} transform="rotate(-90 50 50)" />; start += length; return segment; });
+  return <svg viewBox="0 0 100 100" className="h-36 w-36" role="img" aria-label={`Portfolio allocation ${shares.map((s, i) => `${properties[i].name} ${s}%`).join(', ')}`}><circle cx="50" cy="50" r="37" fill="none" stroke="#1e293b" strokeWidth="11" />{segments}<text x="50" y="47" textAnchor="middle" fill="white" fontSize="11" fontWeight="600">100%</text><text x="50" y="59" textAnchor="middle" fill="#94a3b8" fontSize="5">ALLOCATION</text></svg>;
+}
+
+function IrrChart({ irr, propertyValue }: { irr: number; propertyValue: number }) {
+  const points = Array.from({ length: 6 }, (_, year) => ({ x: 28 + year * 55, y: 112 - (year * irr * 0.62 + year * year * 0.22) }));
+  const d = points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
+  return <svg viewBox="0 0 320 140" className="w-full" role="img" aria-label={`Illustrative five-year IRR ${irr.toFixed(1)} percent; starting value ${money(propertyValue)}`}>
+    {[30, 55, 80, 105].map((y) => <line key={y} x1="20" x2="310" y1={y} y2={y} stroke="#26313d" strokeDasharray="3 4" />)}
+    <path d={`${d} L 303 112 L 28 112 Z`} fill="url(#irrFill)" opacity=".55"/><path d={d} fill="none" stroke="#67e8f9" strokeWidth="2.5" />
+    {points.map((p, i) => <g key={i}><circle cx={p.x} cy={p.y} r="3" fill="#67e8f9"/><text x={p.x} y="130" textAnchor="middle" fill="#64748b" fontSize="8">Y{i}</text></g>)}
+    <defs><linearGradient id="irrFill" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#22d3ee" stopOpacity=".3"/><stop offset="1" stopColor="#22d3ee" stopOpacity="0"/></linearGradient></defs>
+  </svg>;
 }
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-[radial-gradient(ellipse_at_55%_-18%,rgba(14,116,144,0.18),transparent_48%)]">
-      <div className="mx-auto flex min-h-screen max-w-[1680px]">
-        <aside className="hidden w-[244px] shrink-0 flex-col border-r border-white/[0.07] bg-[#090d12]/85 px-4 py-6 xl:flex">
-          <a href="#home" className="mb-9 flex items-center gap-3 px-2">
-            <div className="grid size-9 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200"><Command size={17} /></div>
-            <div><div className="text-[12px] font-bold tracking-[0.18em] text-white">SOVEREIGN<span className="text-cyan-300">.OS</span></div><div className="mt-1 text-[8px] tracking-[0.24em] text-slate-500">APEX EDITION · V12.0</div></div>
-          </a>
-          <div className="mb-2 px-3 text-[9px] font-semibold tracking-[0.2em] text-slate-600">COMMAND</div>
-          <nav className="space-y-1 text-[12px]">
-            <a href="#overview" className="flex items-center gap-3 rounded-lg border border-cyan-300/10 bg-cyan-300/[0.08] px-3 py-2.5 text-cyan-100"><Gauge size={15} /> Executive Overview</a>
-            <a href="#portfolio" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><Building2 size={15} /> Portfolio</a>
-            <a href="#allocator" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><CircleDollarSign size={15} /> Equity Allocator</a>
-            <a href="#deals" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><Layers3 size={15} /> Sovereign Deal Room</a>
-            <a href="#zoning" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><Radar size={15} /> Zoning Radar HUD</a>
-          </nav>
-          <div className="mb-2 mt-8 px-3 text-[9px] font-semibold tracking-[0.2em] text-slate-600">APEX OMNI-SUITE <span className="ml-1 text-cyan-400">200+</span></div>
-          <nav className="space-y-1 text-[12px]">
-            {modules.slice(0, 5).map((module) => <a key={module} href="#suite" className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-500 transition hover:bg-white/[0.04] hover:text-slate-200"><Workflow size={14} />{module}</a>)}
-            <a href="#suite" className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-500 transition hover:bg-white/[0.04] hover:text-slate-200"><MoreHorizontal size={14} />Explore all modules</a>
-          </nav>
-          <div className="mt-auto rounded-xl border border-white/[0.08] bg-white/[0.025] p-3.5">
-            <div className="mb-3 flex items-center gap-2"><div className="grid size-7 place-items-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-cyan-100"><Fingerprint size={13} /></div><div><div className="text-[10px] font-semibold text-slate-200">Mason Fau</div><div className="mt-0.5 text-[8px] tracking-[0.12em] text-cyan-300">ROOT ADMINISTRATIVE OWNER</div></div></div>
-            <div className="flex items-center gap-1.5 border-t border-white/[0.07] pt-3 text-[9px] text-emerald-300"><ShieldCheck size={12} /> Sovereign access verified</div>
-          </div>
-        </aside>
+  const [selected, setSelected] = useState(0);
+  const [valuation, setValuation] = useState(properties[0].value);
+  const [yieldPct, setYieldPct] = useState(properties[0].yield);
+  const [shares, setShares] = useState([45, 35, 20]);
+  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', text: 'Neural Core v12 online. I can help review assumptions, structure illustrative tranches, or explain zoning due-diligence questions. What would you like to examine?' }]);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [chainRunning, setChainRunning] = useState(false);
+  const [chainResult, setChainResult] = useState('');
+  const [orderQty, setOrderQty] = useState(250);
+  const property = properties[selected];
+  const irr = useMemo(() => Math.max(0, Math.min(35, yieldPct * 1.48 + (valuation / property.value - 1) * 7)), [yieldPct, valuation, property.value]);
+  const ownershipValue = useMemo(() => valuation * shares[selected] / 100, [valuation, shares, selected]);
 
-        <section className="min-w-0 flex-1">
-          <header className="flex h-[64px] items-center justify-between border-b border-white/[0.07] px-4 sm:px-7">
-            <div className="flex items-center gap-3"><button aria-label="Open navigation" className="text-slate-400 xl:hidden"><Command size={17} /></button><div className="text-[11px] text-slate-500">Apex Terminal <span className="mx-2 text-slate-700">/</span><span className="text-slate-200">Overview</span></div></div>
-            <div className="flex items-center gap-3 sm:gap-5">
-              <div className="hidden items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 text-[10px] text-slate-500 md:flex"><Search size={13} /> Search assets, deals, investors <kbd className="ml-4 rounded border border-white/10 px-1.5 py-0.5 text-[9px]">⌘ K</kbd></div>
-              <button aria-label="Notifications" className="relative text-slate-400 hover:text-white"><Bell size={16} /><span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-cyan-300" /></button>
-              <div className="grid size-7 place-items-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-[10px] font-semibold text-cyan-100">MF</div>
-            </div>
-          </header>
+  function chooseProperty(index: number) { setSelected(index); setValuation(properties[index].value); setYieldPct(properties[index].yield); }
+  function updateShare(index: number, value: number) { const next = [...shares]; const remaining = 100 - value; const others = next.map((_, i) => i).filter((i) => i !== index); const oldTotal = others.reduce((sum, i) => sum + next[i], 0) || 1; next[index] = value; for (const i of others) next[i] = Math.round(remaining * next[i] / oldTotal); next[others[1]] = 100 - next.reduce((sum, share, i) => sum + (i === others[1] ? 0 : share), 0); setShares(next); }
 
-          <div className="mx-auto max-w-[1420px] px-4 py-7 sm:px-7 sm:py-9">
-            <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-              <div><div className="mb-2 flex items-center gap-2 text-[9px] font-semibold tracking-[0.22em] text-cyan-300"><span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_8px_#67e8f9]" /> PRIVATE CAPITAL · NEW ZEALAND</div><h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[34px]">Apex command center<span className="text-cyan-300">.</span></h1><p className="mt-2 text-xs text-slate-400">Institutional real estate intelligence, allocation and syndication in one sovereign workspace.</p></div>
-              <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#0e1319] px-3 py-2 text-[10px] text-slate-400"><span className="size-1.5 rounded-full bg-emerald-300" /> LIVE SNAPSHOT <ChevronDown size={12} /></div>
-            </div>
+  async function sendMessage(event: FormEvent) {
+    event.preventDefault(); if (!draft.trim() || busy) return;
+    const userText = draft.trim(); const history = [...messages, { role: 'user' as const, text: userText }]; setMessages(history); setDraft(''); setBusy(true);
+    try {
+      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history.map(({ role, text }) => ({ role, content: text })), context: { property: property.name, valuation, yield: yieldPct, rootOwner: 'Mason Fau' } }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Neural Core request failed');
+      setMessages((current) => [...current, { role: 'assistant', text: `${data.reply}\n\n— Neural Core v12 · Root Administrative Owner: Mason Fau` }]);
+    } catch (error) { setMessages((current) => [...current, { role: 'assistant', text: `${error instanceof Error ? error.message : 'Unable to reach Neural Core.'}\n\n— Root Administrative Owner: Mason Fau` }]); }
+    finally { setBusy(false); }
+  }
 
-            <div className="mb-6 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-              <Metric label="Portfolio gross asset value" value="$92.6M" note="7.8% YoY" icon={Building2} accent="text-cyan-300" />
-              <Metric label="Committed investor capital" value="$64.2M" note="+ $4.8M QTD" icon={CircleDollarSign} accent="text-emerald-300" />
-              <Metric label="Weighted occupancy" value="93.7%" note="+1.6 pts" icon={Activity} accent="text-violet-300" />
-              <Metric label="Indicative 5-year IRR" value="14.2%" note="Base scenario" icon={BarChart3} accent="text-amber-300" />
-            </div>
-            <p className="-mt-3 mb-6 text-[9px] text-slate-600">Illustrative dashboard figures only; not an offer, forecast, or investment advice.</p>
+  async function runChain() {
+    setChainRunning(true); setChainResult('Executing underwriting → tranche structure → zoning review…');
+    try {
+      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'chain', tools: chain, deal: { property: property.name, valuation, yield: yieldPct, owner: 'Mason Fau' } }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Chain execution failed');
+      setChainResult(data.results.map((item: { tool: string; summary: string }) => `${item.tool}: ${item.summary}`).join('\n'));
+    } catch (error) { setChainResult(error instanceof Error ? error.message : 'Unable to execute tool chain.'); }
+    finally { setChainRunning(false); }
+  }
 
-            <div className="grid gap-5 2xl:grid-cols-[1.55fr_1fr]">
-              <section id="portfolio" className="rounded-xl border border-white/[0.08] bg-[#0e1319]/85 p-4 sm:p-5">
-                <PanelTitle eyebrow="Institutional portfolio" title="Featured assets" action="Open portfolio" />
-                <div className="grid gap-3 lg:grid-cols-3">{assets.map((asset) => <article key={asset.name} className={`relative overflow-hidden rounded-lg border border-white/[0.07] bg-gradient-to-br ${asset.tint} via-[#111820] to-[#0b1015] p-4`}>
-                  <div className="absolute -right-8 -top-8 size-28 rounded-full border border-white/[0.05]" /><div className="relative flex items-start justify-between"><div><div className="text-[12px] font-semibold text-white">{asset.name}</div><div className="mt-1 text-[9px] text-slate-500">{asset.type}</div></div><span className="rounded border border-white/10 bg-black/20 px-1.5 py-1 text-[8px] tracking-wide text-slate-300">{asset.tag}</span></div>
-                  <div className="relative mt-7 flex items-end justify-between"><div><div className="text-[8px] uppercase tracking-[0.15em] text-slate-500">Est. asset value</div><div className="mt-1 text-xl font-semibold text-white">{asset.value}</div></div><div className="text-right"><div className="flex items-center justify-end gap-1 text-[10px] text-emerald-300"><ArrowUpRight size={11} />{asset.change}</div><div className="mt-1 text-[9px] text-slate-500">{asset.occupancy} occupied</div></div></div>
-                  <div className="relative mt-4 flex items-center justify-between border-t border-white/[0.07] pt-3 text-[9px] text-slate-500"><span className="flex items-center gap-1"><MapPin size={11} /> New Zealand</span><button aria-label={`Open ${asset.name}`} className="text-slate-400 hover:text-cyan-200"><ArrowRight size={13} /></button></div>
-                </article>)}</div>
-              </section>
-
-              <section id="allocator" className="rounded-xl border border-cyan-300/10 bg-[linear-gradient(145deg,rgba(8,47,73,0.22),rgba(14,19,25,0.92)_52%)] p-4 sm:p-5">
-                <PanelTitle eyebrow="Capital strategy" title="Fractional Equity Allocator" action="Launch model" />
-                <p className="-mt-2 mb-4 text-[10px] leading-relaxed text-slate-400">Explore illustrative ownership allocations across the active portfolio. Adjustments require authorized review.</p>
-                <div className="space-y-3">{[{ name: 'Wynyard Quarter', value: '45%', width: '45%', color: 'bg-cyan-300' }, { name: 'Lambton Quay', value: '35%', width: '35%', color: 'bg-violet-300' }, { name: 'The Remarkables', value: '20%', width: '20%', color: 'bg-amber-300' }].map((row) => <div key={row.name}><div className="mb-1.5 flex justify-between text-[10px]"><span className="text-slate-300">{row.name}</span><span className="font-medium text-slate-100">{row.value}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]"><div className={`h-full rounded-full ${row.color}`} style={{ width: row.width }} /></div></div>)}</div>
-                <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-lg border border-white/[0.07] bg-black/15 p-3"><div className="text-[8px] uppercase tracking-wider text-slate-500">Allocation model</div><div className="mt-1 text-[11px] font-medium text-slate-200">Balanced mandate</div></div><div className="rounded-lg border border-white/[0.07] bg-black/15 p-3"><div className="text-[8px] uppercase tracking-wider text-slate-500">Review status</div><div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-emerald-300"><ShieldCheck size={12} /> Ready to review</div></div></div>
-              </section>
-            </div>
-
-            <div className="mt-5 grid gap-5 xl:grid-cols-3">
-              <section className="rounded-xl border border-white/[0.08] bg-[#0e1319]/85 p-4 sm:p-5 xl:col-span-1">
-                <PanelTitle eyebrow="Scenario analysis" title="5-Year IRR Engine" action="View assumptions" />
-                <div className="mb-4 flex items-end justify-between"><div><div className="text-[9px] text-slate-500">Illustrative base case</div><div className="mt-1 text-3xl font-semibold text-white">14.2<span className="text-lg text-slate-400">%</span></div></div><div className="mb-1 flex items-center gap-1 text-[9px] text-emerald-300"><ArrowUpRight size={12} /> 1.3 pts vs. prior scenario</div></div>
-                <div className="flex h-[92px] items-end gap-2 border-b border-white/[0.08] px-1">{[35, 44, 49, 62, 70, 76, 84, 89, 100, 94, 100, 100].map((height, index) => <div key={index} className="group relative flex-1 rounded-t-sm bg-gradient-to-t from-cyan-500/20 to-cyan-300/80" style={{ height: `${height}%` }} />)}</div>
-                <div className="mt-2 flex justify-between text-[8px] text-slate-600"><span>Y0</span><span>Y1</span><span>Y2</span><span>Y3</span><span>Y4</span><span>Y5</span></div>
-                <div className="mt-4 flex items-center justify-between rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 text-[9px]"><span className="text-slate-500">Scenario inputs</span><span className="text-slate-300">Rent · cap rate · exit · leverage</span></div>
-              </section>
-
-              <section id="deals" className="rounded-xl border border-white/[0.08] bg-[#0e1319]/85 p-4 sm:p-5 xl:col-span-1">
-                <PanelTitle eyebrow="Private syndication" title="Sovereign Deal Room" action="Enter deal room" />
-                <div className="space-y-2.5">{[{ name: 'Harbour Exchange', type: 'Wynyard Quarter · Mixed-use', stage: 'DUE DILIGENCE', progress: '72%', color: 'text-cyan-300' }, { name: 'Alpine Residences', type: 'Remarkables · Hospitality', stage: 'INVESTOR REVIEW', progress: '48%', color: 'text-amber-300' }, { name: 'Quay House', type: 'Lambton Quay · Office', stage: 'CLOSED', progress: '100%', color: 'text-emerald-300' }].map((deal) => <div key={deal.name} className="rounded-lg border border-white/[0.06] bg-black/10 p-3"><div className="flex items-start justify-between gap-2"><div><div className="text-[11px] font-medium text-slate-200">{deal.name}</div><div className="mt-1 text-[9px] text-slate-500">{deal.type}</div></div><span className={`text-[8px] font-semibold tracking-wide ${deal.color}`}>{deal.stage}</span></div><div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[0.07]"><div className="h-full rounded-full bg-cyan-400/70" style={{ width: deal.progress }} /></div></div>)}</div>
-              </section>
-
-              <section id="zoning" className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#0e1319]/85 p-4 sm:p-5 xl:col-span-1">
-                <PanelTitle eyebrow="Planning intelligence" title="Zoning Radar HUD" action="Open map" />
-                <div className="relative flex h-[183px] items-center justify-center overflow-hidden rounded-lg border border-cyan-300/[0.12] bg-[#071018]" style={{ backgroundImage: 'linear-gradient(rgba(34,211,238,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,.055) 1px, transparent 1px)', backgroundSize: '22px 22px' }}>
-                  <div className="absolute size-40 rounded-full border border-cyan-300/10" /><div className="absolute size-28 rounded-full border border-cyan-300/15" /><div className="absolute size-16 rounded-full border border-cyan-300/20" /><div className="absolute h-px w-full bg-cyan-300/10" /><div className="absolute h-full w-px bg-cyan-300/10" />
-                  <div className="absolute h-36 w-36 origin-center rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(34,211,238,0.16)_48deg,transparent_70deg)]" />
-                  <span className="absolute left-[27%] top-[32%] size-2 rounded-full bg-cyan-300 shadow-[0_0_12px_#67e8f9]" /><span className="absolute right-[28%] top-[46%] size-1.5 rounded-full bg-amber-300 shadow-[0_0_10px_#fcd34d]" /><span className="absolute bottom-[25%] left-[48%] size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
-                  <div className="absolute left-3 top-3 flex items-center gap-1 text-[8px] tracking-[0.16em] text-cyan-200"><ScanLine size={11} /> PLANNING LAYERS · AUCKLAND</div><div className="absolute bottom-3 right-3 flex items-center gap-1 text-[8px] text-slate-500"><Waves size={10} /> RADAR ONLINE</div>
-                </div>
-                <div className="mt-3 flex items-center justify-between text-[9px]"><span className="flex items-center gap-1.5 text-slate-400"><span className="size-1.5 rounded-full bg-cyan-300" /> 3 opportunity zones</span><span className="text-slate-500">Indicative planning overlay</span></div>
-              </section>
-            </div>
-
-            <div id="suite" className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-              <section className="rounded-xl border border-white/[0.08] bg-[#0e1319]/85 p-4 sm:p-5">
-                <PanelTitle eyebrow="Unified operating layer" title="200-in-1 Omni-Suite" action="Browse all 200+" />
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{modules.map((module, index) => <div key={module} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3"><div className="mb-2 flex items-center justify-between"><Workflow size={14} className={index % 2 ? 'text-violet-300' : 'text-cyan-300'} /><span className="text-[8px] text-emerald-300">READY</span></div><div className="text-[9px] font-medium text-slate-300">{module}</div></div>)}</div>
-                <div className="mt-3 flex items-center gap-2 text-[9px] text-slate-500"><Layers3 size={12} className="text-cyan-300" /> Connected workflows · one permission-aware workspace</div>
-              </section>
-              <section className="rounded-xl border border-white/[0.08] bg-[#0e1319]/85 p-4 sm:p-5">
-                <PanelTitle eyebrow="Autonomous insight layer" title="Neural Core v12" action="Open insights" />
-                <div className="flex gap-3 rounded-lg border border-cyan-300/10 bg-cyan-300/[0.035] p-3.5"><div className="grid size-8 shrink-0 place-items-center rounded-lg border border-cyan-300/15 bg-cyan-300/[0.08] text-cyan-200"><Sparkles size={15} /></div><div><div className="text-[10px] font-medium text-slate-200">Portfolio signal detected</div><p className="mt-1 text-[9px] leading-relaxed text-slate-400">Occupancy at Wynyard Quarter is trending above the modeled base case. Review current assumptions before updating the underwriting scenario.</p></div></div>
-                <div className="mt-3 flex items-center justify-between text-[9px] text-slate-500"><span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-emerald-300" /> PRIVATE MODEL · HUMAN REVIEW REQUIRED</span><button className="text-cyan-300 hover:text-cyan-100">Inspect signal <ArrowRight className="ml-1 inline" size={11} /></button></div>
-              </section>
-            </div>
-
-            <section className="mt-5 rounded-xl border border-white/[0.08] bg-[#0e1319]/85 p-4 sm:p-5">
-              <PanelTitle eyebrow="Immutable workspace activity" title="Recent activity" action="View audit log" />
-              <div className="grid gap-3 md:grid-cols-3">{activity.map(({ title, detail, time, icon: Icon, color }) => <div key={title} className="flex gap-3 rounded-lg border border-white/[0.05] bg-black/10 p-3"><div className={`grid size-8 shrink-0 place-items-center rounded-lg bg-white/[0.04] ${color}`}><Icon size={14} /></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div className="text-[10px] font-medium text-slate-200">{title}</div><time className="shrink-0 text-[8px] text-slate-600">{time}</time></div><div className="mt-1 text-[9px] text-slate-500">{detail}</div></div></div>)}</div>
-            </section>
-
-            <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4 text-[8px] tracking-[0.12em] text-slate-600"><span>SOVEREIGN OS V12.0 · APEX EDITION</span><span className="flex items-center gap-2"><ShieldCheck size={11} className="text-emerald-400" /> ROOT ADMINISTRATIVE OWNER: MASON FAU <span className="text-slate-800">·</span> <span className="flex items-center gap-1"><ArrowDownRight size={10} /> NZT WORKSPACE</span></span></footer>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
+  return <main className="min-h-screen bg-[radial-gradient(ellipse_at_55%_-18%,rgba(14,116,144,.18),transparent_48%)]">
+    <style jsx global>{`@media print { body { background: white !important; color: #111827 !important; } .no-print { display:none !important; } .print-dossier { display:block !important; color:#111827 !important; background:white !important; border:1px solid #cbd5e1 !important; break-inside:avoid; } .print-dossier * { color:#111827 !important; } main { background:white !important; } }`}</style>
+    <div className="mx-auto flex min-h-screen max-w-[1680px]">
+      <aside className="no-print hidden w-[244px] shrink-0 flex-col border-r border-white/[.07] bg-[#090d12]/85 px-4 py-6 xl:flex">
+        <div className="mb-8 flex items-center gap-3 px-2"><div className="grid size-9 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/[.08] text-cyan-200"><Command size={17}/></div><div><div className="text-xs font-bold tracking-[.18em]">SOVEREIGN<span className="text-cyan-300">.OS</span></div><div className="mt-1 text-[8px] tracking-[.2em] text-slate-500">APEX EDITION · V12.0</div></div></div>
+        <div className="mb-2 px-3 text-[9px] tracking-[.2em] text-slate-600">COMMAND</div><nav className="space-y-1 text-xs">{[['overview','Executive Overview',Gauge],['portfolio','Portfolio',Building2],['allocator','Equity Allocator',CircleDollarSign],['deal-room','Sovereign Deal Room',Layers3],['zoning','Zoning Radar HUD',Radar],['neural-core','Neural Core v12',Sparkles]].map(([id,label,Icon]: any) => <a key={id} href={`#${id}`} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400 hover:bg-white/[.04] hover:text-white"><Icon size={15}/>{label}</a>)}</nav>
+        <div className="mb-2 mt-7 px-3 text-[9px] tracking-[.2em] text-slate-600">APEX OMNI-SUITE <span className="text-cyan-400">200+</span></div><div className="space-y-1 text-[11px] text-slate-500">{moduleNames.slice(0,5).map((name)=><div key={name} className="flex items-center gap-3 px-3 py-2"><Workflow size={13}/>{name}</div>)}</div>
+        <div className="mt-auto rounded-xl border border-white/[.08] bg-white/[.025] p-3.5"><div className="mb-3 flex items-center gap-2"><Fingerprint size={16} className="text-cyan-300"/><div><div className="text-[10px] font-semibold text-slate-200">Mason Fau</div><div className="mt-0.5 text-[8px] tracking-wide text-cyan-300">ROOT ADMINISTRATIVE OWNER</div></div></div><div className="flex items-center gap-1.5 border-t border-white/[.07] pt-3 text-[9px] text-emerald-300"><ShieldCheck size={12}/> Root owner verified</div></div>
+      </aside>
+      <section className="min-w-0 flex-1">
+        <header className="no-print flex h-16 items-center justify-between border-b border-white/[.07] px-4 sm:px-7"><div className="flex items-center gap-3"><Command size={16} className="text-cyan-300 xl:hidden"/><div className="text-[11px] text-slate-500">Apex Terminal <span className="mx-2">/</span><span className="text-slate-200">Institutional Overview</span></div></div><div className="flex items-center gap-4"><span className="hidden text-[9px] text-slate-500 sm:block">PRIVATE CAPITAL · NZ</span><Bell size={16} className="text-slate-400"/><div className="grid size-7 place-items-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-[9px] font-bold text-cyan-100">MF</div></div></header>
+        <div className="mx-auto max-w-[1420px] px-4 py-7 sm:px-7">
+          <div id="overview" className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 flex items-center gap-2 text-[9px] tracking-[.22em] text-cyan-300"><span className="size-1.5 rounded-full bg-cyan-300"/> ACTUALLY INCREDIBLE SOVEREIGN OS V12.0 — APEX EDITION</div><h1 className="text-2xl font-semibold text-white sm:text-[32px]">Institutional command terminal<span className="text-cyan-300">.</span></h1><p className="mt-2 text-xs text-slate-400">Live illustrative portfolio controls, allocation, underwriting and syndication workspace.</p></div><div className="flex items-center gap-2 rounded-lg border border-white/[.08] bg-[#0e1319] px-3 py-2 text-[9px] text-emerald-300"><span className="size-1.5 rounded-full bg-emerald-300"/> SYSTEM LIVE · ROOT: MASON FAU</div></div>
+          <div className="no-print mb-5 flex flex-wrap gap-2" aria-label="Property presets">{properties.map((item,index)=><button key={item.name} onClick={()=>chooseProperty(index)} className={`rounded-lg border px-3 py-2 text-[10px] transition ${selected===index?'border-cyan-300/40 bg-cyan-300/10 text-cyan-100':'border-white/10 bg-white/[.02] text-slate-400 hover:text-white'}`}>{item.name}</button>)}</div>
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4"><div className="rounded-xl border border-white/[.08] bg-[#0e1319] p-4"><div className="text-[10px] text-slate-400">Selected asset valuation</div><div className="mt-2 text-2xl font-semibold">{money(valuation)}</div><input aria-label="Valuation in millions" className="mt-3 w-full accent-cyan-300" type="range" min="10" max="100" step="0.1" value={valuation} onChange={(e)=>setValuation(Number(e.target.value))}/><div className="flex justify-between text-[8px] text-slate-600"><span>$10M</span><span>$100M</span></div></div>
+            <div className="rounded-xl border border-white/[.08] bg-[#0e1319] p-4"><div className="text-[10px] text-slate-400">Target yield · {property.name}</div><div className="mt-2 text-2xl font-semibold">{yieldPct.toFixed(1)}%</div><input aria-label="Target yield percent" className="mt-3 w-full accent-violet-300" type="range" min="3" max="12" step="0.1" value={yieldPct} onChange={(e)=>setYieldPct(Number(e.target.value))}/><div className="flex justify-between text-[8px] text-slate-600"><span>3%</span><span>12%</span></div></div>
+            <div className="rounded-xl border border-white/[.08] bg-[#0e1319] p-4"><div className="text-[10px] text-slate-400">Illustrative 5-year IRR</div><div className="mt-2 text-2xl font-semibold text-emerald-300">{irr.toFixed(1)}%</div><div className="mt-2 text-[9px] text-slate-500">Model output · review assumptions</div></div>
+            <div className="rounded-xl border border-white/[.08] bg-[#0e1319] p-4"><div className="text-[10px] text-slate-400">Selected asset · occupancy</div><div className="mt-2 text-2xl font-semibold">{property.occupancy}%</div><div className="mt-2 text-[9px] text-slate-500">{property.location}</div></div></div>
+          <div className="mb-5 grid gap-5 2xl:grid-cols-[1.5fr_1fr]"><Panel eyebrow="Portfolio analytics" title="Live five-year IRR engine"><div className="flex items-end justify-between"><div><span className="text-3xl font-semibold text-white">{irr.toFixed(1)}%</span><span className="ml-2 text-[9px] text-slate-500">illustrative annualized</span></div><span className="text-[9px] text-slate-500">Starting valuation {money(valuation)}</span></div><div className="mt-3"><IrrChart irr={irr} propertyValue={valuation}/></div><div className="text-[8px] text-slate-600">Indicative model only; not a forecast or investment advice.</div></Panel>
+            <Panel eyebrow="Fractional ownership" title="Live equity allocator"><div className="flex flex-wrap items-center justify-around gap-3"><Donut shares={shares}/><div className="min-w-[155px] flex-1 space-y-3">{properties.map((item,i)=><div key={item.name}><div className="mb-1 flex justify-between text-[9px]"><span className="text-slate-300">{item.name}</span><span>{shares[i]}%</span></div><input aria-label={`${item.name} allocation percentage`} type="range" min="5" max="80" value={shares[i]} onChange={(e)=>updateShare(i,Number(e.target.value))} className="w-full accent-cyan-300"/></div>)}</div></div><div className="mt-2 rounded-lg border border-white/[.06] p-2 text-[9px] text-slate-400">Selected exposure: <strong className="text-white">{money(ownershipValue)}</strong> · slider changes rebalance remaining allocations</div></Panel></div>
+          <div className="mb-5 grid gap-5 xl:grid-cols-3"><Panel eyebrow="Live indicative interest" title="Order Book"><div className="mb-3 flex items-center justify-between text-[9px] text-slate-500"><span>Price · indicative</span><span>Units</span><span>Side</span></div><div className="space-y-2">{[{price:'1.045',units:820,buy:true},{price:'1.038',units:640,buy:true},{price:'1.021',units:510,buy:false},{price:'1.016',units:390,buy:false}].map((row,i)=><div key={i} className="relative flex justify-between overflow-hidden rounded bg-white/[.025] px-2 py-1.5 text-[9px]"><span className={row.buy?'text-emerald-300':'text-rose-300'}>{row.price}</span><span className="text-slate-300">{row.units} units</span><span className={row.buy?'text-emerald-300':'text-rose-300'}>{row.buy?'BID':'ASK'}</span><span className={`absolute inset-y-0 right-0 -z-0 ${row.buy?'bg-emerald-400/5':'bg-rose-400/5'}`} style={{width:`${25+i*11}%`}}/></div>)}</div><div className="mt-4 border-t border-white/[.07] pt-3"><label className="text-[9px] text-slate-400">Submit simulated indication · units</label><div className="mt-2 flex gap-2"><input aria-label="Order units" type="number" min="1" value={orderQty} onChange={(e)=>setOrderQty(Number(e.target.value))} className="w-full rounded border border-white/10 bg-black/20 px-2 py-1.5 text-xs"/><button onClick={()=>window.alert(`Indicative order for ${orderQty} units recorded locally. No transaction was submitted.`)} className="rounded bg-cyan-300/10 px-3 text-[9px] text-cyan-200">Preview</button></div><p className="mt-2 text-[8px] text-slate-600">Display-only book; preview does not submit a trade.</p></div></Panel>
+            <Panel id="deal-room" eyebrow="Printable diligence package" title="Sovereign Deal Room" className="print-dossier"><div className="mb-3 flex items-center justify-between"><div><div className="text-lg font-semibold text-white">{property.name}</div><div className="mt-1 text-[9px] text-slate-400">{property.location} · {property.zone}</div></div><Building2 size={20} className="text-cyan-300"/></div><div className="grid grid-cols-2 gap-2 text-[9px]"><div className="rounded border border-white/[.07] p-2">Indicative valuation <strong className="block mt-1 text-white">{money(valuation)}</strong></div><div className="rounded border border-white/[.07] p-2">Target yield <strong className="block mt-1 text-white">{yieldPct.toFixed(1)}%</strong></div><div className="rounded border border-white/[.07] p-2">5-year IRR model <strong className="block mt-1 text-white">{irr.toFixed(1)}%</strong></div><div className="rounded border border-white/[.07] p-2">Root Administrative Owner <strong className="block mt-1 text-white">Mason Fau</strong></div></div><p className="mt-3 text-[8px] leading-relaxed text-slate-500">Illustrative working dossier. Values and model outputs are hypothetical, subject to diligence, and are not an offer, valuation, forecast, or investment advice.</p><button className="no-print mt-3 flex items-center gap-2 rounded border border-cyan-300/20 px-3 py-2 text-[9px] text-cyan-200" onClick={()=>window.print()}><FileText size={13}/> Print / Save dossier PDF</button></Panel>
+            <Panel id="zoning" eyebrow="Planning due-diligence visualization" title="Zoning Radar HUD"><div className="relative flex h-[180px] items-center justify-center overflow-hidden rounded-lg border border-cyan-300/10 bg-[#071018]" style={{backgroundImage:'linear-gradient(rgba(34,211,238,.055) 1px, transparent 1px),linear-gradient(90deg,rgba(34,211,238,.055) 1px,transparent 1px)',backgroundSize:'22px 22px'}}><div className="absolute size-36 rounded-full border border-cyan-300/10"/><div className="absolute size-24 rounded-full border border-cyan-300/15"/><div className="absolute size-12 rounded-full border border-cyan-300/20"/><div className="absolute h-px w-full bg-cyan-300/10"/><div className="absolute h-full w-px bg-cyan-300/10"/><div className="absolute size-36 animate-spin rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(34,211,238,.18)_50deg,transparent_75deg)]" style={{animationDuration:'8s'}}/><span className="absolute left-[27%] top-[32%] size-2 rounded-full bg-cyan-300 shadow-[0_0_10px_#67e8f9]"/><span className="absolute right-[28%] top-[46%] size-1.5 rounded-full bg-amber-300"/><span className="absolute bottom-[25%] left-[48%] size-1.5 rounded-full bg-emerald-300"/><div className="absolute left-3 top-3 text-[8px] tracking-wider text-cyan-200">{property.name.toUpperCase()} · RADAR</div><div className="absolute bottom-3 text-[8px] text-slate-500">Illustrative overlay · verify with local authority</div></div><div className="mt-3 flex items-center gap-2 text-[9px] text-slate-400"><MapPin size={12} className="text-cyan-300"/>{property.zone}<span className="ml-auto flex items-center gap-1 text-emerald-300"><Activity size={11}/> ACTIVE</span></div></Panel></div>
+          <div className="mb-5 grid gap-5 lg:grid-cols-[1fr_1fr]"><Panel eyebrow="Unified operating layer" title="200-in-1 Omni-Suite"><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{moduleNames.slice(0,8).map((name,i)=><div key={name} className="rounded-lg border border-white/[.06] bg-white/[.02] p-2.5"><div className="mb-2 flex justify-between"><Workflow size={13} className={i%2?'text-violet-300':'text-cyan-300'}/><span className="text-[7px] text-emerald-300">READY</span></div><div className="text-[8px] text-slate-300">{name}</div></div>)}</div><div className="mt-4 border-t border-white/[.06] pt-3"><div className="flex items-center justify-between"><span className="text-[9px] text-slate-400">Execute a 3-tool deal review chain</span><button disabled={chainRunning} onClick={runChain} className="flex items-center gap-1 rounded bg-cyan-300/10 px-2.5 py-1.5 text-[8px] text-cyan-200 disabled:opacity-50">{chainRunning?<LoaderCircle className="animate-spin" size={11}/>:<Workflow size={11}/>} Run chain</button></div>{chainResult&&<pre className="mt-3 whitespace-pre-wrap rounded bg-black/20 p-2 text-[8px] leading-relaxed text-slate-400">{chainResult}</pre>}</div></Panel>
+            <Panel id="neural-core" eyebrow="Gemini-powered executive assistant" title="Neural Core v12"><div className="mb-3 flex items-center gap-2 text-[8px] text-emerald-300"><span className="size-1.5 rounded-full bg-emerald-300"/> GEMINI 2.5 FLASH · ROOT ADMINISTRATIVE OWNER: MASON FAU</div><div className="mb-3 max-h-56 space-y-3 overflow-y-auto rounded-lg border border-white/[.06] bg-black/15 p-3" aria-live="polite">{messages.map((message,i)=><div key={i} className={`flex gap-2 text-[9px] leading-relaxed ${message.role==='user'?'justify-end':''}`}>{message.role==='assistant'&&<Sparkles size={12} className="mt-0.5 shrink-0 text-cyan-300"/>}<div className={`max-w-[90%] whitespace-pre-wrap rounded-lg px-2.5 py-2 ${message.role==='user'?'bg-cyan-300/10 text-cyan-100':'bg-white/[.04] text-slate-300'}`}>{message.text}</div>{message.role==='user'&&<div className="mt-1 text-[8px] text-cyan-300">MF</div>}</div>)}{busy&&<div className="flex items-center gap-2 text-[9px] text-slate-500"><LoaderCircle size={12} className="animate-spin"/>Analyzing with executive tools…</div>}</div><form onSubmit={sendMessage} className="flex gap-2"><input value={draft} onChange={(e)=>setDraft(e.target.value)} placeholder="Ask about underwriting, tranches, zoning…" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[9px] outline-none focus:border-cyan-300/30"/><button aria-label="Send message" disabled={busy} className="rounded-lg bg-cyan-300/10 px-3 text-cyan-200 disabled:opacity-50"><Send size={14}/></button></form><div className="mt-2 flex items-center justify-between text-[7px] text-slate-600"><span>Review AI outputs; not legal, planning, or investment advice.</span><span className="flex items-center gap-1"><ShieldCheck size={9}/> Owner: Mason Fau</span></div></Panel></div>
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[.06] py-4 text-[8px] tracking-wide text-slate-600"><span>SOVEREIGN OS V12.0 · APEX EDITION</span><span className="flex items-center gap-2"><ShieldCheck size={11} className="text-emerald-400"/> MASON FAU · ROOT ADMINISTRATIVE OWNER</span></footer>
+        </div>
+      </section>
+    </div>
+  </main>;
 }
