@@ -1,0 +1,21 @@
+import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'Sovereign OS v12.0 — Apex Edition',
+  description: 'Institutional real estate intelligence and syndication terminal.',
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-[#070a0e] font-sans text-slate-100 antialiased">
+        {children}
+      </body>
+    </html>
+  );
+}
